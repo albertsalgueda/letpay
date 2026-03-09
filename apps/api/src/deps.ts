@@ -43,9 +43,10 @@ export interface DepsConfig {
 export function createDependencies(config: DepsConfig = {}): Dependencies {
   const db = config.databaseUrl ? createDb(config.databaseUrl) : createDb();
 
-  const paymentService: PaymentService = config.useMocks !== false
-    ? new MockPaymentService()
-    : new StripePaymentService(config.stripeSecretKey!, config.stripeWebhookSecret!);
+  const useRealStripe = config.useMocks === false && config.stripeSecretKey && !config.stripeSecretKey.includes('mock');
+  const paymentService: PaymentService = useRealStripe
+    ? new StripePaymentService(config.stripeSecretKey!, config.stripeWebhookSecret!)
+    : new MockPaymentService();
 
   const cardService: CardIssuingService = config.useMocks !== false
     ? new MockCardIssuingService()
