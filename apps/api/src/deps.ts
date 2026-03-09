@@ -37,6 +37,7 @@ export interface DepsConfig {
   useMocks?: boolean;
   stripeSecretKey?: string;
   stripeWebhookSecret?: string;
+  notificationService?: NotificationService;
 }
 
 export function createDependencies(config: DepsConfig = {}): Dependencies {
@@ -50,7 +51,7 @@ export function createDependencies(config: DepsConfig = {}): Dependencies {
     ? new MockCardIssuingService()
     : new MockCardIssuingService(); // Card issuing uses mock until Stripe Issuing is set up
 
-  const notificationService: NotificationService = new NoopNotificationService();
+  const notificationService: NotificationService = config.notificationService ?? new NoopNotificationService();
 
   const walletService = new WalletService(db, cardService);
   const fundingService = new FundingService(db, paymentService);

@@ -117,12 +117,15 @@ letpay/
 
 - [x] Research & architecture
 - [x] Technical spec
-- [ ] 🔨 Stripe Issuing sandbox setup
-- [ ] 🔨 Core API — wallet CRUD, funding, card issuing
-- [ ] 🔨 OpenClaw skill — balance, pay, history
-- [ ] 🔨 MCP server — universal agent integration
-- [ ] 🔨 Telegram bot — notifications + approval buttons
-- [ ] 🔨 Web dashboard — balance, transactions, limits
+- [x] Stripe payment integration (checkout sessions, webhooks)
+- [x] Core API — wallet CRUD, funding, card issuing
+- [x] Rules engine — monthly/per-tx limits, MCC blocking, approval thresholds
+- [x] OpenClaw skill — balance, pay, history
+- [x] MCP server — universal agent integration
+- [x] Telegram bot — notifications + approval buttons
+- [x] Web dashboard — balance, transactions, limits, settings
+- [x] Supabase auth with mock fallback
+- [ ] 🔨 Stripe Issuing sandbox setup (real cards)
 - [ ] 🔨 Publish to ClawHub
 - [ ] Multi-agent wallets
 - [ ] Merchant category controls
