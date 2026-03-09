@@ -20,7 +20,8 @@
     "clean": "rm -rf dist .turbo"
   },
   "dependencies": {
-    "@letpay/db": "workspace:*"
+    "@letpay/db": "workspace:*",
+    "drizzle-orm": "^0.38.0"
   },
   "devDependencies": {
     "@types/node": "^25.3.5",
