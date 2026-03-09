@@ -41,7 +41,11 @@ export const api = {
   topup: (walletId: string, amountCents: number, token: string) =>
     apiFetch<any>(`/v1/wallets/${walletId}/topup`, {
       method: 'POST',
-      body: { amount_cents: amountCents, success_url: `${window.location.origin}/wallets`, cancel_url: window.location.href },
+      body: {
+        amount_cents: amountCents,
+        success_url: typeof window !== 'undefined' ? `${window.location.origin}/dashboard/wallets` : 'http://localhost:3000/dashboard/wallets',
+        cancel_url: typeof window !== 'undefined' ? window.location.href : 'http://localhost:3000/dashboard/wallets',
+      },
       token,
     }),
   getBalance: (walletId: string, token: string) => apiFetch<{ balance_cents: number }>(`/v1/wallets/${walletId}/balance`, { token }),
@@ -52,8 +56,24 @@ export const api = {
     apiFetch<any>(`/v1/wallets/${walletId}/rules`, { method: 'PUT', body: rules, token }),
 
   // Transactions
-  listTransactions: (walletId: string, token: string) =>
-    apiFetch<{ data: any[] }>(`/v1/wallets/${walletId}/transactions`, { token }),
+  listTransactions: (walletId: string, token: string, params?: { limit?: number; offset?: number }) => {
+    const qs = new URLSearchParams();
+    if (params?.limit) qs.set('limit', String(params.limit));
+    if (params?.offset) qs.set('offset', String(params.offset));
+    const query = qs.toString() ? `?${qs.toString()}` : '';
+    return apiFetch<{ data: any[]; total: number }>(`/v1/wallets/${walletId}/transactions${query}`, { token });
+  },
+  allTransactions: (token: string, params?: { wallet_id?: string; limit?: number; offset?: number }) => {
+    const qs = new URLSearchParams();
+    if (params?.wallet_id) qs.set('wallet_id', params.wallet_id);
+    if (params?.limit) qs.set('limit', String(params.limit));
+    if (params?.offset) qs.set('offset', String(params.offset));
+    const query = qs.toString() ? `?${qs.toString()}` : '';
+    return apiFetch<{ data: any[]; total: number }>(`/v1/transactions${query}`, { token });
+  },
+
+  // Card
+  getCardDetails: (walletId: string, token: string) => apiFetch<any>(`/v1/wallets/${walletId}/card`, { method: 'POST', token }),
 
   // Approvals
   listApprovals: (token: string) => apiFetch<{ data: any[] }>('/v1/approvals', { token }),

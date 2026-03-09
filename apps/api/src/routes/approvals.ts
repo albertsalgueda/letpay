@@ -7,12 +7,12 @@ import { errorResponse } from '../middleware/error-handler.js';
 export function approvalRoutes(deps: Dependencies) {
   const router = new Hono<AppEnv>();
 
-  // GET /v1/approvals - List pending approvals
+  // GET /v1/approvals - List all approvals (pending + resolved)
   router.get('/', async (c) => {
     try {
       const userId = c.get('userId');
-      const pending = await deps.approvalService.listPending(userId);
-      return c.json({ data: pending });
+      const all = await deps.approvalService.listAll(userId);
+      return c.json({ data: all });
     } catch (err) {
       return errorResponse(c, err);
     }

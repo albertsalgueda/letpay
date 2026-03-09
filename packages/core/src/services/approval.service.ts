@@ -60,7 +60,6 @@ export class ApprovalService {
         eq(approvalRequests.status, 'pending'),
       ));
 
-    // Expire any that are past their deadline
     const now = new Date();
     const active: ApprovalRequestInfo[] = [];
     for (const r of results) {
@@ -74,6 +73,26 @@ export class ApprovalService {
     }
 
     return active;
+  }
+
+  async listAll(userId: string): Promise<ApprovalRequestInfo[]> {
+    const results = await this.db.select().from(approvalRequests)
+      .where(eq(approvalRequests.userId, userId));
+
+    const now = new Date();
+    const out: ApprovalRequestInfo[] = [];
+    for (const r of results) {
+      if (r.status === 'pending' && r.expiresAt < now) {
+        await this.db.update(approvalRequests)
+          .set({ status: 'expired' })
+          .where(eq(approvalRequests.id, r.id));
+        out.push(this.toInfo({ ...r, status: 'expired' }));
+      } else {
+        out.push(this.toInfo(r));
+      }
+    }
+
+    return out;
   }
 
   private async getAndValidate(approvalId: string, userId: string) {
