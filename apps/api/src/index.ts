@@ -1,8 +1,12 @@
 import { serve } from '@hono/node-server';
-import { app } from './app.js';
+import { createApp } from './app.js';
+import { createDependencies } from './deps.js';
+import { getEnv } from './env.js';
 
-const port = Number(process.env.PORT ?? 3001);
+const env = getEnv();
+const deps = createDependencies({ databaseUrl: env.DATABASE_URL, useMocks: env.USE_MOCKS });
+const app = createApp(deps);
 
-serve({ fetch: app.fetch, port }, (info) => {
+serve({ fetch: app.fetch, port: env.PORT }, (info) => {
   console.log(`LetPay API running on http://localhost:${info.port}`);
 });
