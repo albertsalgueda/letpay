@@ -17,6 +17,7 @@
     "@hono/node-server": "^1.13.0",
     "@letpay/core": "workspace:*",
     "@letpay/db": "workspace:*",
+    "@supabase/supabase-js": "^2.99.0",
     "hono": "^4.6.0",
     "zod": "^3.24.0"
   },

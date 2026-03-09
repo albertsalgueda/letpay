@@ -12,6 +12,7 @@
     "clean": "rm -rf .next .turbo dist"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.99.0",
     "@tailwindcss/postcss": "^4.2.1",
     "next": "^15.1.0",
     "postcss": "^8.5.8",

@@ -1,10 +1,18 @@
-import { Sidebar } from '@/components/sidebar';
+import type { Metadata } from 'next';
+import './globals.css';
+import { AuthProvider } from '@/lib/auth-context';
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+export const metadata: Metadata = {
+  title: 'LetPay - Let your AI agent pay',
+  description: 'The payment layer for AI agents. Fund with your card. Set limits. Done.',
+};
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex min-h-screen">
-      <Sidebar />
-      <main className="flex-1 p-8">{children}</main>
-    </div>
+    <html lang="en">
+      <body className="bg-gray-50 text-gray-900 antialiased">
+        <AuthProvider>{children}</AuthProvider>
+      </body>
+    </html>
   );
 }

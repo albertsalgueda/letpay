@@ -1,7 +1,21 @@
 import { createMiddleware } from 'hono/factory';
+import { createClient } from '@supabase/supabase-js';
 import { isApiKey } from '@letpay/core';
 import type { ApiKeyService } from '@letpay/core';
 import type { AppEnv } from '../types.js';
+
+let supabaseAdmin: ReturnType<typeof createClient> | null = null;
+
+function getSupabaseAdmin() {
+  if (supabaseAdmin) return supabaseAdmin;
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (url && key && !url.includes('xxx') && key !== 'mock-key') {
+    supabaseAdmin = createClient(url, key);
+    return supabaseAdmin;
+  }
+  return null;
+}
 
 export function authMiddleware(apiKeyService: ApiKeyService) {
   return createMiddleware<AppEnv>(async (c, next) => {
@@ -24,8 +38,23 @@ export function authMiddleware(apiKeyService: ApiKeyService) {
       }
     }
 
-    // JWT auth (Supabase) — simplified for now
-    // In production, verify with Supabase service role key
+    const admin = getSupabaseAdmin();
+    if (admin) {
+      try {
+        const { data: { user }, error } = await admin.auth.getUser(token);
+        if (error || !user) {
+          return c.json({ error: { code: 'UNAUTHORIZED', message: 'Invalid token' } }, 401);
+        }
+        c.set('userId', user.id);
+        c.set('scopes', ['read', 'write', 'pay', 'admin']);
+        c.set('authMethod', 'jwt');
+        return next();
+      } catch {
+        return c.json({ error: { code: 'UNAUTHORIZED', message: 'Token validation failed' } }, 401);
+      }
+    }
+
+    // Mock JWT fallback: decode without verification
     try {
       const payload = JSON.parse(atob(token.split('.')[1]));
       const userId = payload.sub;
