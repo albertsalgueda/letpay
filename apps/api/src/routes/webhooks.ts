@@ -20,6 +20,10 @@ export function webhookRoutes(deps: Dependencies) {
           );
           break;
         }
+        case 'payment_intent.succeeded': {
+          await deps.fundingService.handlePaymentSucceeded(event.data.paymentIntentId!);
+          break;
+        }
         case 'payment_intent.payment_failed': {
           await deps.fundingService.handlePaymentFailed(event.data.paymentIntentId!);
           break;

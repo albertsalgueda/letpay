@@ -17,6 +17,9 @@ export type {
 export { MockPaymentService } from './payments/mock';
 export { MockCardIssuingService } from './cards/mock';
 
+// Live implementations
+export { StripePaymentService } from './payments/stripe';
+
 // Services
 export { WalletService } from './services/wallet.service';
 export { FundingService } from './services/funding.service';

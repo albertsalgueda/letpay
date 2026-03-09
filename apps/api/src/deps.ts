@@ -2,6 +2,7 @@ import { createDb, type Database } from '@letpay/db';
 import {
   MockPaymentService,
   MockCardIssuingService,
+  StripePaymentService,
   WalletService,
   FundingService,
   SpendingRulesService,
@@ -34,6 +35,8 @@ export interface Dependencies {
 export interface DepsConfig {
   databaseUrl?: string;
   useMocks?: boolean;
+  stripeSecretKey?: string;
+  stripeWebhookSecret?: string;
 }
 
 export function createDependencies(config: DepsConfig = {}): Dependencies {
@@ -41,11 +44,11 @@ export function createDependencies(config: DepsConfig = {}): Dependencies {
 
   const paymentService: PaymentService = config.useMocks !== false
     ? new MockPaymentService()
-    : new MockPaymentService(); // TODO: replace with LiveStripeService
+    : new StripePaymentService(config.stripeSecretKey!, config.stripeWebhookSecret!);
 
   const cardService: CardIssuingService = config.useMocks !== false
     ? new MockCardIssuingService()
-    : new MockCardIssuingService(); // TODO: replace with LiveWallesterService
+    : new MockCardIssuingService(); // Card issuing uses mock until Stripe Issuing is set up
 
   const notificationService: NotificationService = new NoopNotificationService();
 

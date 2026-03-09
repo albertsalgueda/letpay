@@ -4,7 +4,12 @@ import { createDependencies } from './deps.js';
 import { getEnv } from './env.js';
 
 const env = getEnv();
-const deps = createDependencies({ databaseUrl: env.DATABASE_URL, useMocks: env.USE_MOCKS });
+const deps = createDependencies({
+  databaseUrl: env.DATABASE_URL,
+  useMocks: env.USE_MOCKS,
+  stripeSecretKey: env.STRIPE_SECRET_KEY,
+  stripeWebhookSecret: env.STRIPE_WEBHOOK_SECRET,
+});
 const app = createApp(deps);
 
 serve({ fetch: app.fetch, port: env.PORT }, (info) => {

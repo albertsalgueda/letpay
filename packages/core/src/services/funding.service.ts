@@ -72,6 +72,27 @@ export class FundingService {
       .where(eq(wallets.id, topup.walletId));
   }
 
+  async handlePaymentSucceeded(paymentIntentId: string): Promise<void> {
+    const [topup] = await this.db.select().from(topups)
+      .where(eq(topups.stripePaymentIntentId, paymentIntentId));
+
+    if (!topup || topup.status === 'succeeded') return;
+
+    await this.db.update(topups)
+      .set({ status: 'succeeded' })
+      .where(eq(topups.id, topup.id));
+
+    const [wallet] = await this.db.select().from(wallets).where(eq(wallets.id, topup.walletId));
+    if (!wallet) return;
+
+    await this.db.update(wallets)
+      .set({
+        balanceCents: wallet.balanceCents + topup.amountCents,
+        updatedAt: new Date(),
+      })
+      .where(eq(wallets.id, topup.walletId));
+  }
+
   async handlePaymentFailed(paymentIntentId: string): Promise<void> {
     const [topup] = await this.db.select().from(topups)
       .where(eq(topups.stripePaymentIntentId, paymentIntentId));
