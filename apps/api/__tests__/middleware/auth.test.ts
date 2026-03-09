@@ -20,11 +20,12 @@ describe('Auth middleware', () => {
 
   it('rejects invalid token', async () => {
     const { app } = createTestApp();
+    // Non-API-key tokens that aren't valid JWTs are rejected
     const res = await app.request('/v1/wallets', {
       headers: { Authorization: 'Bearer invalid-token' },
     });
     expect(res.status).toBe(401);
-  });
+  }, 15000);
 
   it('accepts API key auth', async () => {
     const { app } = createTestApp();

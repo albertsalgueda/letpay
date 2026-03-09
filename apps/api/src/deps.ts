@@ -2,6 +2,8 @@ import { createDb, type Database } from '@letpay/db';
 import {
   MockPaymentService,
   MockCardIssuingService,
+  LiveStripeService,
+  LiveWallesterService,
   WalletService,
   FundingService,
   SpendingRulesService,
@@ -34,18 +36,38 @@ export interface Dependencies {
 export interface DepsConfig {
   databaseUrl?: string;
   useMocks?: boolean;
+  stripeSecretKey?: string;
+  stripeWebhookSecret?: string;
+  wallesterApiUrl?: string;
+  wallesterIssuerId?: string;
+  wallesterAudienceId?: string;
+  wallesterPrivateKey?: string;
+  wallesterPublicKey?: string;
 }
 
 export function createDependencies(config: DepsConfig = {}): Dependencies {
   const db = config.databaseUrl ? createDb(config.databaseUrl) : createDb();
 
-  const paymentService: PaymentService = config.useMocks !== false
-    ? new MockPaymentService()
-    : new MockPaymentService(); // TODO: replace with LiveStripeService
+  let paymentService: PaymentService;
+  let cardService: CardIssuingService;
 
-  const cardService: CardIssuingService = config.useMocks !== false
-    ? new MockCardIssuingService()
-    : new MockCardIssuingService(); // TODO: replace with LiveWallesterService
+  if (config.useMocks !== false) {
+    paymentService = new MockPaymentService();
+    cardService = new MockCardIssuingService();
+  } else {
+    paymentService = new LiveStripeService(
+      config.stripeSecretKey!,
+      config.stripeWebhookSecret!,
+    );
+    cardService = new LiveWallesterService({
+      apiUrl: config.wallesterApiUrl!,
+      issuerId: config.wallesterIssuerId!,
+      audienceId: config.wallesterAudienceId!,
+      privateKey: config.wallesterPrivateKey!,
+      wallesterPublicKey: config.wallesterPublicKey ?? '',
+      maxExpirationSeconds: 300,
+    });
+  }
 
   const notificationService: NotificationService = new NoopNotificationService();
 

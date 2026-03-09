@@ -15,7 +15,12 @@ import { agentRoutes } from './routes/agent.js';
 import { webhookRoutes } from './routes/webhooks.js';
 import { apiKeyRoutes } from './routes/api-keys.js';
 
-export function createApp(deps: Dependencies) {
+export interface AppConfig {
+  supabaseUrl: string;
+  supabaseServiceKey: string;
+}
+
+export function createApp(deps: Dependencies, config?: AppConfig) {
   const app = new Hono<AppEnv>();
 
   // Global middleware
@@ -29,7 +34,11 @@ export function createApp(deps: Dependencies) {
   app.route('/v1/webhooks', webhookRoutes(deps));
 
   // Auth-protected routes
-  const auth = authMiddleware(deps.apiKeyService);
+  const auth = authMiddleware(
+    deps.apiKeyService,
+    config?.supabaseUrl ?? process.env.SUPABASE_URL ?? '',
+    config?.supabaseServiceKey ?? process.env.SUPABASE_SERVICE_ROLE_KEY ?? '',
+  );
   app.use('/v1/*', auth);
 
   app.route('/v1/wallets', walletRoutes(deps));

@@ -1,9 +1,12 @@
 import { createMiddleware } from 'hono/factory';
+import { createClient } from '@supabase/supabase-js';
 import { isApiKey } from '@letpay/core';
 import type { ApiKeyService } from '@letpay/core';
 import type { AppEnv } from '../types.js';
 
-export function authMiddleware(apiKeyService: ApiKeyService) {
+export function authMiddleware(apiKeyService: ApiKeyService, supabaseUrl: string, supabaseServiceKey: string) {
+  const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
   return createMiddleware<AppEnv>(async (c, next) => {
     const authHeader = c.req.header('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
@@ -12,6 +15,7 @@ export function authMiddleware(apiKeyService: ApiKeyService) {
 
     const token = authHeader.slice(7);
 
+    // API key auth
     if (isApiKey(token)) {
       try {
         const { userId, scopes } = await apiKeyService.verify(token);
@@ -24,15 +28,15 @@ export function authMiddleware(apiKeyService: ApiKeyService) {
       }
     }
 
-    // JWT auth (Supabase) — simplified for now
-    // In production, verify with Supabase service role key
+    // Supabase JWT auth — verify with Supabase
     try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      const userId = payload.sub;
-      if (!userId) {
-        return c.json({ error: { code: 'UNAUTHORIZED', message: 'Invalid token' } }, 401);
+      const { data: { user }, error } = await supabase.auth.getUser(token);
+
+      if (error || !user) {
+        return c.json({ error: { code: 'UNAUTHORIZED', message: 'Invalid or expired token' } }, 401);
       }
-      c.set('userId', userId);
+
+      c.set('userId', user.id);
       c.set('scopes', ['read', 'write', 'pay', 'admin']);
       c.set('authMethod', 'jwt');
       return next();

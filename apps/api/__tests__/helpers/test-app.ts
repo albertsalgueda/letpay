@@ -78,16 +78,17 @@ export function createTestDeps(): Dependencies {
   };
 }
 
-// Create a mock JWT token for testing
-export function mockJwt(userId: string = 'u1') {
-  const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
-  const payload = btoa(JSON.stringify({ sub: userId, email: 'test@test.com' }));
-  const signature = 'mock-signature';
-  return `${header}.${payload}.${signature}`;
+// Create a mock API key token for testing
+// Uses API key format so auth middleware routes through the mocked apiKeyService.verify
+export function mockJwt(_userId: string = 'u1') {
+  return 'lp_sk_test_mock_key_for_testing';
 }
 
 export function createTestApp() {
   const deps = createTestDeps();
-  const app = createApp(deps);
+  const app = createApp(deps, {
+    supabaseUrl: 'http://127.0.0.1:54321',
+    supabaseServiceKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJ0ZXN0Iiwic3ViIjoiMTIzIn0.test',
+  });
   return { app, deps };
 }

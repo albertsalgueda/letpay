@@ -21,7 +21,8 @@
   },
   "dependencies": {
     "@letpay/db": "workspace:*",
-    "drizzle-orm": "^0.38.0"
+    "drizzle-orm": "^0.38.0",
+    "stripe": "^20.4.1"
   },
   "devDependencies": {
     "@types/node": "^25.3.5",
