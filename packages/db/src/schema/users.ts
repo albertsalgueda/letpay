@@ -7,6 +7,7 @@ export const users = pgTable('users', {
   email: text('email').notNull().unique(),
   name: text('name').notNull(),
   stripeCustomerId: text('stripe_customer_id').unique(),
+  telegramChatId: text('telegram_chat_id').unique(),
   kycStatus: kycStatusEnum('kyc_status').default('pending').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
