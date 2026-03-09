@@ -7,6 +7,7 @@ import type { AppEnv } from '../types.js';
 let supabaseAdmin: ReturnType<typeof createClient> | null = null;
 
 function getSupabaseAdmin() {
+  if (process.env.USE_MOCKS === 'true') return null;
   if (supabaseAdmin) return supabaseAdmin;
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;

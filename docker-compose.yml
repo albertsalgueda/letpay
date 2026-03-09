@@ -18,7 +18,7 @@ services:
   api:
     build:
       context: .
-      dockerfile: Dockerfile.api
+      dockerfile: apps/api/Dockerfile
     ports:
       - "3001:3001"
     environment:
@@ -32,7 +32,7 @@ services:
   web:
     build:
       context: .
-      dockerfile: Dockerfile.web
+      dockerfile: apps/web/Dockerfile
     ports:
       - "3000:3000"
     environment:
@@ -43,11 +43,11 @@ services:
   telegram-bot:
     build:
       context: .
-      dockerfile: Dockerfile.bot
+      dockerfile: apps/telegram-bot/Dockerfile
     environment:
       DATABASE_URL: postgresql://letpay:letpay@postgres:5432/letpay
       USE_MOCKS: "true"
-      TELEGRAM_BOT_TOKEN: "${TELEGRAM_BOT_TOKEN:-mock-token}"
+      TELEGRAM_BOT_TOKEN: "${TELEGRAM_BOT_TOKEN:-}"
     depends_on:
       postgres:
         condition: service_healthy
