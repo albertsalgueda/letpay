@@ -18,6 +18,10 @@ function calcFee(euros: number) {
   return { amountCents, chargeCents, feeCents };
 }
 
+function formatPan(pan: string) {
+  return pan.replace(/\s/g, '').replace(/(.{4})/g, '$1 ').trim();
+}
+
 export default function DashboardPage() {
   const { token, user } = useAuth();
   const { wallets, activeWalletId, selectWallet, showCreateModal, setShowCreateModal, refreshWallets, loading: walletsLoading } = useDashboard();
@@ -43,6 +47,8 @@ export default function DashboardPage() {
   const [cardRevealed, setCardRevealed] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [cardFlipped, setCardFlipped] = useState(false);
+  const [fetchingCard, setFetchingCard] = useState(false);
   const [editRules, setEditRules] = useState({
     monthly_limit_cents: 5000,
     per_transaction_limit_cents: 2500,
@@ -59,6 +65,7 @@ export default function DashboardPage() {
     setTxOffset(0);
     setCardDetails(null);
     setCardRevealed(false);
+    setCardFlipped(false);
 
     const [w, r, t] = await Promise.all([
       api.getWallet(walletId, token).catch(() => null),
@@ -153,6 +160,23 @@ export default function DashboardPage() {
     } catch {}
   };
 
+  const handleFlipCard = async () => {
+    if (!activeWalletId || !token) return;
+    if (cardFlipped) {
+      setCardFlipped(false);
+      return;
+    }
+    setCardFlipped(true);
+    if (!cardDetails) {
+      setFetchingCard(true);
+      try {
+        const details = await api.getCardDetails(activeWalletId, token);
+        setCardDetails(details);
+      } catch {}
+      setFetchingCard(false);
+    }
+  };
+
   const handleSaveRules = async () => {
     if (!token || !activeWalletId) return;
     setSavingRules(true);
@@ -193,6 +217,12 @@ export default function DashboardPage() {
     navigator.clipboard.writeText(text);
     setCopiedField(field);
     setTimeout(() => setCopiedField(null), 1500);
+  };
+
+  const copyAll = () => {
+    if (!cardDetails) return;
+    const text = `${cardDetails.pan.replace(/\s/g, '')}\nEXP: ${cardDetails.expMonth}/${cardDetails.expYear}\nCVV: ${cardDetails.cvv}`;
+    copyToClipboard(text, 'all');
   };
 
   const activeIndex = wallets.findIndex((w) => w.id === activeWalletId);
@@ -297,6 +327,39 @@ export default function DashboardPage() {
 
   return (
     <>
+      <style>{`
+        .card-scene {
+          perspective: 1000px;
+        }
+        .card-inner {
+          position: relative;
+          width: 100%;
+          height: 100%;
+          transition: transform 0.45s cubic-bezier(0.4, 0.2, 0.2, 1);
+          transform-style: preserve-3d;
+        }
+        .card-inner.flipped {
+          transform: rotateY(180deg);
+        }
+        .card-face {
+          position: absolute;
+          inset: 0;
+          backface-visibility: hidden;
+          -webkit-backface-visibility: hidden;
+          border-radius: 1rem;
+          overflow: hidden;
+        }
+        .card-face-back {
+          transform: rotateY(180deg);
+        }
+        .copy-btn {
+          transition: opacity 0.15s, transform 0.15s;
+        }
+        .copy-btn:active {
+          transform: scale(0.9);
+        }
+      `}</style>
+
       <div className="px-4 pt-4 pb-6">
         {/* Top bar */}
         <div className="flex items-center justify-between mb-4">
@@ -322,20 +385,112 @@ export default function DashboardPage() {
             const wBalance = w.balanceCents ?? w.balance_cents ?? 0;
             const isActive = w.id === activeWalletId;
             const wLast4 = w.wallesterCardId?.slice(-4) || '····';
+
+            if (isActive) {
+              return (
+                <div
+                  key={w.id}
+                  className="flex-shrink-0 snap-center card-scene"
+                  style={{ width: 280, height: 160 }}
+                >
+                  <div className={`card-inner${cardFlipped ? ' flipped' : ''}`}>
+                    {/* Front face */}
+                    <div
+                      className="card-face bg-black text-white p-5 cursor-pointer select-none"
+                      onClick={handleFlipCard}
+                    >
+                      <p className="text-xs font-medium text-gray-400">{w.name}</p>
+                      <p className="mt-2 text-2xl font-bold tracking-tight">{formatCents(wBalance)}</p>
+                      <div className="mt-4 flex items-center justify-between">
+                        <span className="text-xs font-mono text-gray-400">•••• {wLast4}</span>
+                        <div className="flex items-center gap-2">
+                          {w.status === 'frozen' && (
+                            <span className="text-xs bg-blue-500/20 text-blue-300 rounded-full px-2 py-0.5 font-medium">frozen</span>
+                          )}
+                          <span className="text-[10px] text-gray-500 font-medium">tap to flip</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Back face */}
+                    <div
+                      className="card-face card-face-back bg-gradient-to-br from-gray-900 to-gray-700 text-white p-5 cursor-pointer select-none"
+                      onClick={handleFlipCard}
+                    >
+                      {fetchingCard ? (
+                        <div className="flex items-center justify-center h-full">
+                          <svg className="animate-spin w-6 h-6 text-gray-400" viewBox="0 0 24 24" fill="none">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                          </svg>
+                        </div>
+                      ) : cardDetails ? (
+                        <>
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1 min-w-0">
+                              <p
+                                className="text-sm font-mono tracking-widest truncate"
+                                onClick={(e) => { e.stopPropagation(); copyToClipboard(cardDetails.pan.replace(/\s/g, ''), 'pan-flip'); }}
+                              >
+                                {formatPan(cardDetails.pan)}
+                              </p>
+                              {copiedField === 'pan-flip' && (
+                                <span className="text-[10px] text-green-400 font-medium">Copied!</span>
+                              )}
+                            </div>
+                            {/* Visa-style mark */}
+                            <span className="text-xs font-bold italic text-white/60 ml-2 shrink-0">VISA</span>
+                          </div>
+                          <div className="flex gap-5 mt-3">
+                            <div>
+                              <p className="text-[9px] text-gray-400 uppercase tracking-wider">Expires</p>
+                              <p
+                                className="text-xs font-mono mt-0.5 cursor-pointer"
+                                onClick={(e) => { e.stopPropagation(); copyToClipboard(`${cardDetails.expMonth}/${cardDetails.expYear}`, 'exp-flip'); }}
+                              >
+                                {cardDetails.expMonth}/{cardDetails.expYear}
+                                {copiedField === 'exp-flip' && <span className="ml-1 text-green-400">✓</span>}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-[9px] text-gray-400 uppercase tracking-wider">CVV</p>
+                              <p
+                                className="text-xs font-mono mt-0.5 cursor-pointer"
+                                onClick={(e) => { e.stopPropagation(); copyToClipboard(cardDetails.cvv, 'cvv-flip'); }}
+                              >
+                                {cardDetails.cvv}
+                                {copiedField === 'cvv-flip' && <span className="ml-1 text-green-400">✓</span>}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="mt-3 flex items-end justify-between">
+                            <p className="text-[10px] text-gray-400 uppercase tracking-wider truncate max-w-[160px]">
+                              {cardDetails.holderName || w.name}
+                            </p>
+                            <span className="text-[9px] text-gray-500">tap to flip back</span>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="flex items-center justify-center h-full">
+                          <p className="text-xs text-gray-500">Could not load card</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            }
+
             return (
               <button
                 key={w.id}
                 onClick={() => selectWallet(w.id)}
-                className={`flex-shrink-0 snap-center rounded-2xl p-5 text-left transition-all ${
-                  isActive
-                    ? 'bg-black text-white w-[280px] shadow-lg'
-                    : 'bg-white text-gray-900 w-[260px] shadow-sm border border-gray-100'
-                }`}
+                className="flex-shrink-0 snap-center rounded-2xl p-5 text-left transition-all bg-white text-gray-900 w-[260px] shadow-sm border border-gray-100"
               >
-                <p className={`text-xs font-medium ${isActive ? 'text-gray-400' : 'text-gray-500'}`}>{w.name}</p>
-                <p className={`mt-2 text-2xl font-bold tracking-tight ${isActive ? '' : ''}`}>{formatCents(wBalance)}</p>
+                <p className="text-xs font-medium text-gray-500">{w.name}</p>
+                <p className="mt-2 text-2xl font-bold tracking-tight">{formatCents(wBalance)}</p>
                 <div className="mt-4 flex items-center justify-between">
-                  <span className={`text-xs font-mono ${isActive ? 'text-gray-400' : 'text-gray-400'}`}>•••• {wLast4}</span>
+                  <span className="text-xs font-mono text-gray-400">•••• {wLast4}</span>
                   {w.status === 'frozen' && (
                     <span className="text-xs bg-blue-500/20 text-blue-300 rounded-full px-2 py-0.5 font-medium">frozen</span>
                   )}
@@ -356,7 +511,7 @@ export default function DashboardPage() {
         {/* Dots indicator */}
         {wallets.length > 1 && (
           <div className="flex items-center justify-center gap-1.5 mt-3">
-            {wallets.map((w, i) => (
+            {wallets.map((w) => (
               <div
                 key={w.id}
                 className={`rounded-full transition-all ${w.id === activeWalletId ? 'w-5 h-1.5 bg-black' : 'w-1.5 h-1.5 bg-gray-300'}`}
@@ -522,37 +677,93 @@ export default function DashboardPage() {
         </Modal>
       )}
 
-      {showCardModal && cardDetails && (
+      {showCardModal && (
         <Modal onClose={() => { setShowCardModal(false); setCardRevealed(false); }}>
           <h3 className="text-lg font-bold">Card Details</h3>
           <p className="text-sm text-gray-500 mt-1">{wallet.name} virtual card</p>
-          <div className="mt-4 rounded-2xl bg-gradient-to-br from-gray-900 to-gray-700 p-5 text-white">
-            <p className="text-xs text-gray-400 font-medium">Card Number</p>
-            <div className="flex items-center gap-2 mt-1">
-              <p className="text-lg font-mono tracking-wider">{cardRevealed ? cardDetails.pan : '•••• •••• •••• ' + last4}</p>
-              {cardRevealed && (
-                <button onClick={() => copyToClipboard(cardDetails.pan, 'pan')} className="text-xs text-gray-400 hover:text-white">
-                  {copiedField === 'pan' ? '✓' : 'Copy'}
+
+          {!cardDetails ? (
+            <div className="mt-4 flex items-center justify-center py-10">
+              <svg className="animate-spin w-6 h-6 text-gray-400" viewBox="0 0 24 24" fill="none">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+              </svg>
+            </div>
+          ) : (
+            <>
+              <div className="mt-4 rounded-2xl bg-gradient-to-br from-gray-900 to-gray-700 p-5 text-white">
+                <div className="flex items-start justify-between mb-3">
+                  <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">Card Number</p>
+                  <span className="text-xs font-bold italic text-white/50">VISA</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <p className="text-base font-mono tracking-widest flex-1">
+                    {cardRevealed ? formatPan(cardDetails.pan) : `•••• •••• •••• ${last4}`}
+                  </p>
+                  {cardRevealed && (
+                    <button
+                      className="copy-btn text-xs text-gray-400 hover:text-white shrink-0 px-2 py-1 rounded-lg bg-white/10 hover:bg-white/20 transition"
+                      onClick={() => copyToClipboard(cardDetails.pan.replace(/\s/g, ''), 'pan')}
+                    >
+                      {copiedField === 'pan' ? '✓ Copied' : 'Copy'}
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex gap-6 mt-4">
+                  <div>
+                    <p className="text-[9px] text-gray-400 uppercase tracking-wider">Expires</p>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <p className="text-sm font-mono">{cardRevealed ? `${cardDetails.expMonth}/${cardDetails.expYear}` : '••/••'}</p>
+                      {cardRevealed && (
+                        <button
+                          className="copy-btn text-[10px] text-gray-400 hover:text-white transition"
+                          onClick={() => copyToClipboard(`${cardDetails.expMonth}/${cardDetails.expYear}`, 'exp')}
+                        >
+                          {copiedField === 'exp' ? '✓' : '⧉'}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-[9px] text-gray-400 uppercase tracking-wider">CVV</p>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <p className="text-sm font-mono">{cardRevealed ? cardDetails.cvv : '•••'}</p>
+                      {cardRevealed && (
+                        <button
+                          className="copy-btn text-[10px] text-gray-400 hover:text-white transition"
+                          onClick={() => copyToClipboard(cardDetails.cvv, 'cvv')}
+                        >
+                          {copiedField === 'cvv' ? '✓' : '⧉'}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {cardRevealed && cardDetails.holderName && (
+                  <p className="mt-3 text-xs text-gray-400 uppercase tracking-wider font-medium">{cardDetails.holderName}</p>
+                )}
+              </div>
+
+              <div className="flex gap-2 mt-3">
+                <button
+                  onClick={() => setCardRevealed(!cardRevealed)}
+                  className="flex-1 rounded-xl bg-gray-100 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-200 transition"
+                >
+                  {cardRevealed ? 'Hide Details' : 'Reveal Details'}
                 </button>
-              )}
-            </div>
-            <div className="flex gap-6 mt-4">
-              <div>
-                <p className="text-xs text-gray-400 font-medium">Expiry</p>
-                <p className="text-sm font-mono mt-0.5">{cardRevealed ? `${cardDetails.expMonth}/${cardDetails.expYear}` : '••/••'}</p>
+                {cardRevealed && (
+                  <button
+                    onClick={copyAll}
+                    className="flex-1 rounded-xl bg-black py-3 text-sm font-semibold text-white hover:bg-gray-800 transition"
+                  >
+                    {copiedField === 'all' ? '✓ Copied All' : 'Copy All'}
+                  </button>
+                )}
               </div>
-              <div>
-                <p className="text-xs text-gray-400 font-medium">CVV</p>
-                <p className="text-sm font-mono mt-0.5">{cardRevealed ? cardDetails.cvv : '•••'}</p>
-              </div>
-            </div>
-          </div>
-          <button
-            onClick={() => setCardRevealed(!cardRevealed)}
-            className="mt-4 w-full rounded-xl bg-gray-100 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-200 transition"
-          >
-            {cardRevealed ? 'Hide Details' : 'Reveal Details'}
-          </button>
+            </>
+          )}
         </Modal>
       )}
     </>
