@@ -3,6 +3,7 @@ import {
   MockPaymentService,
   MockCardIssuingService,
   StripePaymentService,
+  WallesterCardIssuingService,
   WalletService,
   FundingService,
   SpendingRulesService,
@@ -15,6 +16,7 @@ import {
   type PaymentService,
   type CardIssuingService,
   type NotificationService,
+  type WallesterConfig,
 } from '@letpay/core';
 
 export interface Dependencies {
@@ -37,6 +39,7 @@ export interface DepsConfig {
   useMocks?: boolean;
   stripeSecretKey?: string;
   stripeWebhookSecret?: string;
+  wallester?: WallesterConfig;
   notificationService?: NotificationService;
 }
 
@@ -48,9 +51,10 @@ export function createDependencies(config: DepsConfig = {}): Dependencies {
     ? new StripePaymentService(config.stripeSecretKey!, config.stripeWebhookSecret!)
     : new MockPaymentService();
 
-  const cardService: CardIssuingService = config.useMocks !== false
-    ? new MockCardIssuingService()
-    : new MockCardIssuingService(); // Card issuing uses mock until Stripe Issuing is set up
+  const useRealWallester = config.useMocks === false && config.wallester && config.wallester.clientId !== 'mock';
+  const cardService: CardIssuingService = useRealWallester
+    ? new WallesterCardIssuingService(config.wallester!)
+    : new MockCardIssuingService();
 
   const notificationService: NotificationService = config.notificationService ?? new NoopNotificationService();
 

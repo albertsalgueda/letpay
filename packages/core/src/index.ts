@@ -19,6 +19,8 @@ export { MockCardIssuingService } from './cards/mock';
 
 // Live implementations
 export { StripePaymentService } from './payments/stripe';
+export { WallesterCardIssuingService, WallesterApiError, WallesterWebhookError } from './cards/wallester';
+export type { WallesterConfig } from './cards/wallester';
 
 // Services
 export { WalletService } from './services/wallet.service';
