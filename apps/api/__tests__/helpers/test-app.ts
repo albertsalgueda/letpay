@@ -32,7 +32,8 @@ export function createTestDeps(): Dependencies {
     cardService: mockCards,
     notificationService: mockNotification,
     walletService: {
-      create: async () => ({ id: 'w1', userId: 'u1', name: 'Test', status: 'active' as const, balanceCents: 10000, wallesterCardId: 'card1' }),
+      create: async () => ({ id: 'w1', userId: 'u1', name: 'Test', status: 'pending_funding' as const, balanceCents: 0, wallesterCardId: null }),
+      activateWallet: async () => ({ id: 'w1', userId: 'u1', name: 'Test', status: 'active' as const, balanceCents: 10000, wallesterCardId: 'card1' }),
       get: async () => ({ id: 'w1', userId: 'u1', name: 'Test', status: 'active' as const, balanceCents: 10000, wallesterCardId: 'card1' }),
       listByUser: async () => [{ id: 'w1', userId: 'u1', name: 'Test', status: 'active' as const, balanceCents: 10000, wallesterCardId: 'card1' }],
       freeze: async () => {},
@@ -41,7 +42,7 @@ export function createTestDeps(): Dependencies {
       assertActive: async () => ({ id: 'w1', userId: 'u1', name: 'Test', status: 'active' as const, balanceCents: 10000, wallesterCardId: 'card1' }),
     } as any,
     fundingService: {
-      createTopup: async () => ({ id: 't1', userId: 'u1', walletId: 'w1', amountCents: 5000, status: 'pending' as const, checkoutUrl: 'https://checkout.mock.stripe.com/test' }),
+      createTopup: async () => ({ id: 't1', userId: 'u1', walletId: 'w1', amountCents: 5000, chargeCents: 5175, feeCents: 175, status: 'pending' as const, checkoutUrl: 'https://checkout.mock.stripe.com/test' }),
       handlePaymentCompleted: async () => {},
       handlePaymentFailed: async () => {},
       getBalance: async () => 10000,

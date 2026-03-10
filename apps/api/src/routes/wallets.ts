@@ -8,23 +8,35 @@ import { errorResponse } from '../middleware/error-handler.js';
 export function walletRoutes(deps: Dependencies) {
   const router = new Hono<AppEnv>();
 
-  // POST /v1/wallets - Create wallet
+  // POST /v1/wallets - Create wallet with initial funding
   router.post('/', async (c) => {
     try {
       const userId = c.get('userId');
       const body = createWalletBody.parse(await c.req.json());
-      const wallet = await deps.walletService.create(userId, body.name);
-      return c.json(wallet, 201);
+
+      const wallet = await deps.walletService.create(userId, body.name, true);
+
+      const defaultUrl = 'http://localhost:3000/dashboard';
+      const topup = await deps.fundingService.createTopup(
+        userId,
+        wallet.id,
+        body.initial_funding_cents,
+        body.success_url ?? defaultUrl,
+        body.cancel_url ?? defaultUrl,
+      );
+
+      return c.json({ ...wallet, checkout_url: topup.checkoutUrl, topup }, 201);
     } catch (err) {
       return errorResponse(c, err);
     }
   });
 
-  // GET /v1/wallets - List user's wallets
+  // GET /v1/wallets - List user's wallets (excludes pending_funding)
   router.get('/', async (c) => {
     try {
       const userId = c.get('userId');
-      const wallets = await deps.walletService.listByUser(userId);
+      const all = await deps.walletService.listByUser(userId);
+      const wallets = all.filter((w) => w.status !== 'pending_funding');
       return c.json({ data: wallets });
     } catch (err) {
       return errorResponse(c, err);

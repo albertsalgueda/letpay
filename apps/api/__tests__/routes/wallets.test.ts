@@ -24,18 +24,24 @@ describe('Wallet routes', () => {
     expect(body.data[0].id).toBe('w1');
   });
 
-  it('POST /v1/wallets creates a wallet', async () => {
+  it('POST /v1/wallets creates a wallet with initial funding', async () => {
     const res = await app.request('/v1/wallets', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${mockJwt()}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ name: 'Agent Wallet' }),
+      body: JSON.stringify({
+        name: 'Agent Wallet',
+        initial_funding_cents: 1000,
+        success_url: 'http://localhost:3000/dashboard',
+        cancel_url: 'http://localhost:3000/dashboard',
+      }),
     });
     expect(res.status).toBe(201);
     const body = await res.json();
     expect(body.id).toBe('w1');
+    expect(body.checkout_url).toBeDefined();
   });
 
   it('GET /v1/wallets/:id returns a wallet', async () => {

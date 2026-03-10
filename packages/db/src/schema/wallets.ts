@@ -1,7 +1,7 @@
 import { pgTable, uuid, text, timestamp, integer, pgEnum } from 'drizzle-orm/pg-core';
 import { users } from './users';
 
-export const walletStatusEnum = pgEnum('wallet_status', ['active', 'frozen', 'cancelled']);
+export const walletStatusEnum = pgEnum('wallet_status', ['active', 'frozen', 'cancelled', 'pending_funding']);
 
 export const wallets = pgTable('wallets', {
   id: uuid('id').primaryKey().defaultRandom(),

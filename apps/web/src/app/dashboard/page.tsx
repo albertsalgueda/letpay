@@ -8,6 +8,15 @@ import { formatCents, formatDate, groupByDate } from '@/lib/utils';
 
 const TX_PAGE_SIZE = 15;
 const QUICK_AMOUNTS = [10, 25, 50, 100];
+const FEE_RATE = 0.035;
+const MIN_TOPUP_EUR = 10;
+
+function calcFee(euros: number) {
+  const amountCents = Math.round(euros * 100);
+  const chargeCents = Math.ceil(amountCents * (1 + FEE_RATE));
+  const feeCents = chargeCents - amountCents;
+  return { amountCents, chargeCents, feeCents };
+}
 
 export default function DashboardPage() {
   const { token, user } = useAuth();
@@ -26,6 +35,7 @@ export default function DashboardPage() {
   const [showCardModal, setShowCardModal] = useState(false);
 
   const [newWalletName, setNewWalletName] = useState('');
+  const [newWalletFunding, setNewWalletFunding] = useState('10');
   const [creating, setCreating] = useState(false);
   const [topupAmount, setTopupAmount] = useState('');
   const [topupLoading, setTopupLoading] = useState(false);
@@ -81,11 +91,19 @@ export default function DashboardPage() {
 
   const handleCreateWallet = async () => {
     if (!token || !newWalletName.trim()) return;
+    const euros = parseFloat(newWalletFunding);
+    if (!euros || euros < MIN_TOPUP_EUR) return;
+    const cents = Math.round(euros * 100);
     setCreating(true);
     try {
-      const w = await api.createWallet(newWalletName.trim(), token);
+      const w = await api.createWallet(newWalletName.trim(), token, cents);
+      if (w.checkout_url) {
+        window.location.href = w.checkout_url;
+        return;
+      }
       setShowCreateModal(false);
       setNewWalletName('');
+      setNewWalletFunding('10');
       await refreshWallets();
       selectWallet(w.id);
     } catch {}
@@ -94,8 +112,9 @@ export default function DashboardPage() {
 
   const handleTopup = async () => {
     if (!token || !activeWalletId || !topupAmount) return;
-    const cents = Math.round(parseFloat(topupAmount) * 100);
-    if (cents <= 0) return;
+    const euros = parseFloat(topupAmount);
+    if (!euros || euros < MIN_TOPUP_EUR) return;
+    const cents = Math.round(euros * 100);
     setTopupLoading(true);
     try {
       const result = await api.topup(activeWalletId, cents, token);
@@ -235,7 +254,11 @@ export default function DashboardPage() {
         </div>
         {showCreateModal && (
           <Modal onClose={() => setShowCreateModal(false)}>
-            <CreateWalletContent name={newWalletName} setName={setNewWalletName} creating={creating} onCreate={handleCreateWallet} />
+            <CreateWalletContent
+              name={newWalletName} setName={setNewWalletName}
+              funding={newWalletFunding} setFunding={setNewWalletFunding}
+              creating={creating} onCreate={handleCreateWallet}
+            />
           </Modal>
         )}
       </>
@@ -409,14 +432,18 @@ export default function DashboardPage() {
       {/* Modals */}
       {showCreateModal && (
         <Modal onClose={() => setShowCreateModal(false)}>
-          <CreateWalletContent name={newWalletName} setName={setNewWalletName} creating={creating} onCreate={handleCreateWallet} />
+          <CreateWalletContent
+            name={newWalletName} setName={setNewWalletName}
+            funding={newWalletFunding} setFunding={setNewWalletFunding}
+            creating={creating} onCreate={handleCreateWallet}
+          />
         </Modal>
       )}
 
       {showAddFunds && (
         <Modal onClose={() => setShowAddFunds(false)}>
           <h3 className="text-lg font-bold">Add Funds</h3>
-          <p className="text-sm text-gray-500 mt-1">Top up via Stripe checkout</p>
+          <p className="text-sm text-gray-500 mt-1">Top up via Stripe checkout (min €{MIN_TOPUP_EUR})</p>
           <div className="flex gap-2 mt-4">
             {QUICK_AMOUNTS.map((amt) => (
               <button
@@ -438,20 +465,21 @@ export default function DashboardPage() {
               <input
                 type="number"
                 step="0.01"
-                min="0"
-                placeholder="Custom amount"
+                min={MIN_TOPUP_EUR}
+                placeholder={`Min €${MIN_TOPUP_EUR}`}
                 value={topupAmount}
                 onChange={(e) => setTopupAmount(e.target.value)}
                 className="w-full rounded-xl border border-gray-200 bg-gray-50 pl-7 pr-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-black focus:bg-white"
               />
             </div>
           </div>
+          <FeeBreakdown euros={parseFloat(topupAmount) || 0} />
           <button
             onClick={handleTopup}
-            disabled={topupLoading || !topupAmount}
+            disabled={topupLoading || !topupAmount || parseFloat(topupAmount) < MIN_TOPUP_EUR}
             className="mt-4 w-full rounded-xl bg-black py-3.5 text-sm text-white font-semibold hover:bg-gray-800 transition disabled:opacity-50"
           >
-            {topupLoading ? 'Redirecting...' : `Pay €${topupAmount || '0'}`}
+            {topupLoading ? 'Redirecting...' : `Pay €${topupAmount && parseFloat(topupAmount) >= MIN_TOPUP_EUR ? (calcFee(parseFloat(topupAmount)).chargeCents / 100).toFixed(2) : '0.00'}`}
           </button>
         </Modal>
       )}
@@ -593,16 +621,32 @@ function Modal({ onClose, children }: { onClose: () => void; children: React.Rea
   );
 }
 
-function CreateWalletContent({ name, setName, creating, onCreate }: {
+function FeeBreakdown({ euros }: { euros: number }) {
+  if (!euros || euros < MIN_TOPUP_EUR) return null;
+  const { chargeCents, feeCents } = calcFee(euros);
+  return (
+    <div className="mt-3 rounded-xl bg-gray-50 px-4 py-3 text-sm text-gray-600 space-y-1">
+      <div className="flex justify-between"><span>Amount credited</span><span className="font-medium text-gray-900">€{euros.toFixed(2)}</span></div>
+      <div className="flex justify-between"><span>Processing fee (3.5%)</span><span className="font-medium text-gray-900">€{(feeCents / 100).toFixed(2)}</span></div>
+      <div className="flex justify-between border-t border-gray-200 pt-1 mt-1"><span className="font-semibold text-gray-900">Total charged</span><span className="font-bold text-gray-900">€{(chargeCents / 100).toFixed(2)}</span></div>
+    </div>
+  );
+}
+
+function CreateWalletContent({ name, setName, funding, setFunding, creating, onCreate }: {
   name: string;
   setName: (v: string) => void;
+  funding: string;
+  setFunding: (v: string) => void;
   creating: boolean;
   onCreate: () => void;
 }) {
+  const euros = parseFloat(funding) || 0;
+  const valid = name.trim() && euros >= MIN_TOPUP_EUR;
   return (
     <>
       <h3 className="text-lg font-bold">Create Wallet</h3>
-      <p className="mt-1 text-sm text-gray-500">Give your wallet a name. Balance starts at €0.</p>
+      <p className="mt-1 text-sm text-gray-500">Name your wallet and add initial funds (min €{MIN_TOPUP_EUR}).</p>
       <input
         type="text"
         placeholder="e.g. My Agent"
@@ -610,14 +654,42 @@ function CreateWalletContent({ name, setName, creating, onCreate }: {
         onChange={(e) => setName(e.target.value)}
         autoFocus
         className="mt-4 w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-black focus:bg-white"
-        onKeyDown={(e) => { if (e.key === 'Enter') onCreate(); }}
       />
+      <div className="flex gap-2 mt-3">
+        {QUICK_AMOUNTS.map((amt) => (
+          <button
+            key={amt}
+            onClick={() => setFunding(String(amt))}
+            className={`flex-1 rounded-xl py-2.5 text-sm font-semibold transition ${
+              funding === String(amt)
+                ? 'bg-black text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            €{amt}
+          </button>
+        ))}
+      </div>
+      <div className="mt-3 relative">
+        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">€</span>
+        <input
+          type="number"
+          step="0.01"
+          min={MIN_TOPUP_EUR}
+          placeholder={`Min €${MIN_TOPUP_EUR}`}
+          value={funding}
+          onChange={(e) => setFunding(e.target.value)}
+          className="w-full rounded-xl border border-gray-200 bg-gray-50 pl-7 pr-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-black focus:bg-white"
+          onKeyDown={(e) => { if (e.key === 'Enter' && valid) onCreate(); }}
+        />
+      </div>
+      <FeeBreakdown euros={euros} />
       <button
         onClick={onCreate}
-        disabled={creating || !name.trim()}
+        disabled={creating || !valid}
         className="mt-4 w-full rounded-xl bg-black py-3.5 text-sm text-white font-semibold hover:bg-gray-800 transition disabled:opacity-50"
       >
-        {creating ? 'Creating...' : 'Create'}
+        {creating ? 'Creating...' : 'Create & Fund'}
       </button>
     </>
   );

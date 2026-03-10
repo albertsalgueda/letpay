@@ -4,7 +4,7 @@ export interface WalletInfo {
   id: string;
   userId: string;
   name: string;
-  status: 'active' | 'frozen' | 'cancelled';
+  status: 'active' | 'frozen' | 'cancelled' | 'pending_funding';
   balanceCents: number;
   wallesterCardId: string | null;
 }
@@ -47,6 +47,8 @@ export interface TopupInfo {
   userId: string;
   walletId: string;
   amountCents: number;
+  chargeCents: number;
+  feeCents: number;
   status: 'pending' | 'succeeded' | 'failed';
   checkoutUrl?: string;
 }

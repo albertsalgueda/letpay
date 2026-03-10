@@ -33,7 +33,17 @@ export const api = {
   // Wallets
   listWallets: (token: string) => apiFetch<{ data: any[] }>('/v1/wallets', { token }),
   getWallet: (id: string, token: string) => apiFetch<any>(`/v1/wallets/${id}`, { token }),
-  createWallet: (name: string, token: string) => apiFetch<any>('/v1/wallets', { method: 'POST', body: { name }, token }),
+  createWallet: (name: string, token: string, initialFundingCents: number) =>
+    apiFetch<any>('/v1/wallets', {
+      method: 'POST',
+      body: {
+        name,
+        initial_funding_cents: initialFundingCents,
+        success_url: typeof window !== 'undefined' ? `${window.location.origin}/dashboard` : 'http://localhost:3000/dashboard',
+        cancel_url: typeof window !== 'undefined' ? `${window.location.origin}/dashboard` : 'http://localhost:3000/dashboard',
+      },
+      token,
+    }),
   freezeWallet: (id: string, token: string) => apiFetch<any>(`/v1/wallets/${id}/freeze`, { method: 'POST', token }),
   unfreezeWallet: (id: string, token: string) => apiFetch<any>(`/v1/wallets/${id}/unfreeze`, { method: 'POST', token }),
 

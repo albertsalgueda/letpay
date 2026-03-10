@@ -11,6 +11,7 @@ export const topups = pgTable('topups', {
   stripePaymentIntentId: text('stripe_payment_intent_id').unique(),
   stripeCheckoutSessionId: text('stripe_checkout_session_id').unique(),
   amountCents: integer('amount_cents').notNull(),
+  chargeCents: integer('charge_cents'),
   status: topupStatusEnum('status').default('pending').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 }, (table) => [

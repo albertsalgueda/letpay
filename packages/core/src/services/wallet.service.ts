@@ -11,27 +11,32 @@ export class WalletService {
     private cardService: CardIssuingService,
   ) {}
 
-  async create(userId: string, name: string): Promise<WalletInfo> {
+  async create(userId: string, name: string, requiresFunding = false): Promise<WalletInfo> {
+    const status = requiresFunding ? 'pending_funding' : 'active';
+
     const [wallet] = await this.db.insert(wallets).values({
       userId,
       name,
+      status,
     }).returning();
 
-    // Create a virtual card for this wallet
-    const card = await this.cardService.createVirtualCard({
-      externalId: wallet.id,
-      holderName: name,
-    });
+    let cardId: string | null = null;
 
-    // Update wallet with card ID
-    await this.db.update(wallets)
-      .set({ wallesterCardId: card.cardId })
-      .where(eq(wallets.id, wallet.id));
+    if (!requiresFunding) {
+      const card = await this.cardService.createVirtualCard({
+        externalId: wallet.id,
+        holderName: name,
+      });
+      cardId = card.cardId;
 
-    // Create default spending rules
-    await this.db.insert(spendingRules).values({
-      walletId: wallet.id,
-    });
+      await this.db.update(wallets)
+        .set({ wallesterCardId: cardId })
+        .where(eq(wallets.id, wallet.id));
+
+      await this.db.insert(spendingRules).values({
+        walletId: wallet.id,
+      });
+    }
 
     return {
       id: wallet.id,
@@ -39,6 +44,32 @@ export class WalletService {
       name: wallet.name,
       status: wallet.status,
       balanceCents: wallet.balanceCents,
+      wallesterCardId: cardId,
+    };
+  }
+
+  async activateWallet(walletId: string): Promise<WalletInfo> {
+    const wallet = await this.get(walletId);
+    if (wallet.status !== 'pending_funding') {
+      throw new DomainError('Wallet is not pending funding', 'WALLET_NOT_PENDING', 400);
+    }
+
+    const card = await this.cardService.createVirtualCard({
+      externalId: walletId,
+      holderName: wallet.name,
+    });
+
+    await this.db.update(wallets)
+      .set({ status: 'active', wallesterCardId: card.cardId, updatedAt: new Date() })
+      .where(eq(wallets.id, walletId));
+
+    await this.db.insert(spendingRules).values({
+      walletId,
+    });
+
+    return {
+      ...wallet,
+      status: 'active',
       wallesterCardId: card.cardId,
     };
   }

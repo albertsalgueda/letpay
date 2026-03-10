@@ -56,6 +56,7 @@ export function createDependencies(config: DepsConfig = {}): Dependencies {
 
   const walletService = new WalletService(db, cardService);
   const fundingService = new FundingService(db, paymentService);
+  fundingService.setWalletService(walletService);
   const rulesService = new SpendingRulesService(db);
   const transactionService = new TransactionService(db);
   const approvalService = new ApprovalService(db);
