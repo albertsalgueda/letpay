@@ -6,7 +6,7 @@ import { api } from '@/lib/api-client';
 import { formatDate } from '@/lib/utils';
 
 export default function SettingsPage() {
-  const { token } = useAuth();
+  const { token, user, signOut } = useAuth();
   const [keys, setKeys] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [newKeyName, setNewKeyName] = useState('');
@@ -52,76 +52,86 @@ export default function SettingsPage() {
   };
 
   return (
-    <div>
-      <h1 className="text-2xl font-bold">Settings</h1>
+    <div className="px-4 pt-6 pb-8">
+      {/* Profile section */}
+      <div className="rounded-2xl bg-white p-5 shadow-sm">
+        <div className="flex items-center gap-3">
+          <div className="h-12 w-12 rounded-full bg-black text-white flex items-center justify-center text-lg font-bold">
+            {(user?.name?.[0] || user?.email?.[0] || 'U').toUpperCase()}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold truncate">{user?.name || 'User'}</p>
+            <p className="text-xs text-gray-500 truncate">{user?.email}</p>
+          </div>
+          <button
+            onClick={signOut}
+            className="rounded-xl bg-gray-100 px-4 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-200 transition"
+          >
+            Sign out
+          </button>
+        </div>
+      </div>
 
-      <div className="mt-8">
-        <h2 className="text-lg font-bold">API Keys</h2>
-        <p className="mt-2 text-gray-600">Manage API keys for your integrations and MCP server.</p>
+      {/* API Keys */}
+      <div className="mt-6">
+        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3 px-1">API Keys</h2>
 
         {newlyCreatedKey && (
-          <div className="mt-4 rounded-lg border border-green-200 bg-green-50 p-4">
-            <p className="text-sm font-medium text-green-800">API key created. Copy it now — it won&apos;t be shown again.</p>
+          <div className="rounded-2xl bg-green-50 border border-green-200 p-4 mb-3">
+            <p className="text-xs font-semibold text-green-800">Copy this key now — it won&apos;t be shown again.</p>
             <div className="mt-2 flex items-center gap-2">
-              <code className="flex-1 rounded bg-white px-3 py-2 text-sm font-mono border border-green-200 break-all">{newlyCreatedKey}</code>
-              <button onClick={handleCopy} className="rounded-lg bg-green-600 px-3 py-2 text-sm text-white font-medium hover:bg-green-700 transition">
-                {copied ? 'Copied!' : 'Copy'}
+              <code className="flex-1 rounded-xl bg-white px-3 py-2 text-xs font-mono border border-green-200 break-all">{newlyCreatedKey}</code>
+              <button onClick={handleCopy} className="rounded-xl bg-green-600 px-3 py-2 text-xs text-white font-semibold hover:bg-green-700 transition">
+                {copied ? '✓' : 'Copy'}
               </button>
             </div>
           </div>
         )}
 
-        <div className="mt-4 flex items-center gap-2">
-          <input
-            type="text"
-            placeholder="Key name (e.g. MCP Server)"
-            value={newKeyName}
-            onChange={(e) => setNewKeyName(e.target.value)}
-            className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black"
-          />
-          <button
-            onClick={handleCreate}
-            disabled={creating || !newKeyName.trim()}
-            className="rounded-lg bg-black px-4 py-2 text-sm text-white font-medium hover:bg-gray-800 transition disabled:opacity-50"
-          >
-            {creating ? 'Creating...' : 'Create API Key'}
-          </button>
-        </div>
-
-        {loading ? (
-          <p className="mt-4 text-gray-500">Loading...</p>
-        ) : keys.length === 0 ? (
-          <p className="mt-4 text-gray-500">No API keys yet.</p>
-        ) : (
-          <div className="mt-4 overflow-x-auto rounded-xl border border-gray-200 bg-white">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b text-left text-gray-500">
-                  <th className="px-4 py-3 font-medium">Name</th>
-                  <th className="px-4 py-3 font-medium">Key</th>
-                  <th className="px-4 py-3 font-medium">Scopes</th>
-                  <th className="px-4 py-3 font-medium">Created</th>
-                  <th className="px-4 py-3 font-medium"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {keys.map((k) => (
-                  <tr key={k.id} className="border-b last:border-0">
-                    <td className="px-4 py-3 font-medium">{k.name}</td>
-                    <td className="px-4 py-3 font-mono text-gray-600">{k.keyPrefix}••••••••</td>
-                    <td className="px-4 py-3 text-gray-600">{(k.scopes || []).join(', ')}</td>
-                    <td className="px-4 py-3 text-gray-600">{formatDate(k.createdAt)}</td>
-                    <td className="px-4 py-3">
-                      <button onClick={() => handleRevoke(k.id)} className="text-sm text-red-600 hover:text-red-800 font-medium transition">
-                        Revoke
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        <div className="rounded-2xl bg-white p-4 shadow-sm">
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              placeholder="Key name (e.g. MCP Server)"
+              value={newKeyName}
+              onChange={(e) => setNewKeyName(e.target.value)}
+              className="flex-1 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-black focus:bg-white"
+            />
+            <button
+              onClick={handleCreate}
+              disabled={creating || !newKeyName.trim()}
+              className="rounded-xl bg-black px-4 py-2.5 text-sm text-white font-semibold hover:bg-gray-800 transition disabled:opacity-50 shrink-0"
+            >
+              {creating ? '...' : 'Create'}
+            </button>
           </div>
-        )}
+
+          <div className="mt-4">
+            {loading ? (
+              <div className="space-y-3">
+                {[1, 2].map((i) => (
+                  <div key={i} className="h-14 rounded-xl bg-gray-100 animate-pulse" />
+                ))}
+              </div>
+            ) : keys.length === 0 ? (
+              <p className="text-sm text-gray-400 text-center py-6">No API keys yet</p>
+            ) : (
+              <div className="divide-y divide-gray-50">
+                {keys.map((k) => (
+                  <div key={k.id} className="flex items-center justify-between py-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate">{k.name}</p>
+                      <p className="text-xs text-gray-400 mt-0.5 font-mono">{k.keyPrefix}••••••••</p>
+                    </div>
+                    <button onClick={() => handleRevoke(k.id)} className="text-xs text-red-500 hover:text-red-700 font-semibold transition shrink-0 ml-3">
+                      Revoke
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
