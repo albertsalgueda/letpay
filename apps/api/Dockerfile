@@ -14,11 +14,9 @@ COPY packages/db packages/db
 COPY packages/core packages/core
 COPY apps/api apps/api
 
-# Build
-RUN pnpm --filter @letpay/db build && \
-    pnpm --filter @letpay/core build && \
-    pnpm --filter @letpay/api build
+# Install tsx for runtime
+RUN pnpm add -w tsx
 
 EXPOSE 3001
 ENV PORT=3001
-CMD ["node", "apps/api/dist/index.js"]
+CMD ["npx", "tsx", "apps/api/src/index.ts"]
