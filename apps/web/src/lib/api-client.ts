@@ -43,8 +43,8 @@ export const api = {
       method: 'POST',
       body: {
         amount_cents: amountCents,
-        success_url: typeof window !== 'undefined' ? `${window.location.origin}/dashboard/wallets` : 'http://localhost:3000/dashboard/wallets',
-        cancel_url: typeof window !== 'undefined' ? window.location.href : 'http://localhost:3000/dashboard/wallets',
+        success_url: typeof window !== 'undefined' ? `${window.location.origin}/dashboard` : 'http://localhost:3000/dashboard',
+        cancel_url: typeof window !== 'undefined' ? `${window.location.origin}/dashboard` : 'http://localhost:3000/dashboard',
       },
       token,
     }),

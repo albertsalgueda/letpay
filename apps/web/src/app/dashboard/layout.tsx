@@ -4,6 +4,23 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Sidebar } from '@/components/sidebar';
 import { useAuth } from '@/lib/auth-context';
+import { DashboardProvider, useDashboard } from '@/lib/dashboard-context';
+
+function DashboardShell({ children }: { children: React.ReactNode }) {
+  const { wallets, activeWalletId, selectWallet, setShowCreateModal } = useDashboard();
+
+  return (
+    <div className="flex min-h-screen">
+      <Sidebar
+        wallets={wallets}
+        activeWalletId={activeWalletId}
+        onSelectWallet={selectWallet}
+        onCreateWallet={() => setShowCreateModal(true)}
+      />
+      <main className="flex-1 overflow-auto p-6 md:p-8">{children}</main>
+    </div>
+  );
+}
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -26,9 +43,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   if (!user) return null;
 
   return (
-    <div className="flex min-h-screen">
-      <Sidebar />
-      <main className="flex-1 overflow-auto p-8">{children}</main>
-    </div>
+    <DashboardProvider>
+      <DashboardShell>{children}</DashboardShell>
+    </DashboardProvider>
   );
 }
